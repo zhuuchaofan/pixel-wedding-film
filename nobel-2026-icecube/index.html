@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>追捕幽灵粒子</title>
+</head>
+<body>
+<script src="../engine/pixel8.js"></script>
+<script>
+// ===== 8-bit 科普短片：2026 诺贝尔物理学奖 · IceCube 中微子 =====
+// ---------------- 场景 ----------------
+function sceneTitle(t) {
+  R(0, 0, W, H, P[0]); stars(3, 90);
+  const k = clamp(t / 1.3); const bounce = k < 1 ? 1 - Math.abs(Math.cos(k * Math.PI * 1.5)) * (1 - k) : 1;
+  const my = Math.round(lerp(-30, 52, bounce));
+  R(150, 0, 9, my - 14, P[12]); R(161, 0, 9, my - 14, P[8]);
+  circle(160, my, 21, P[4]); circle(160, my, 20, P[9]); circle(160, my, 17, P[10]); circle(160, my, 14, P[9]);
+  sprite(SPR.star, 157, my - 4);
+  for (let i = 0; i < 6; i++) { const a = t * 1.5 + i * Math.PI / 3; if ((FR + i * 3) % 12 < 8) px(160 + Math.cos(a) * 28, my + Math.sin(a) * 28, P[10]); }
+  B(typed('2026 诺贝尔物理学奖', t - 1.3, 12), 160, 92, P[10], 'center');
+  B(typed('追捕「幽灵粒子」', t - 2.4, 10), 160, 114, P[7], 'center');
+  if (t > 3.6) T('—— 南极冰下的中微子望远镜 ——', 320, 278, P[12], 'center');
+}
+
+function sceneSun(t) {
+  R(0, 0, W, H, P[0]); stars(5, 60);
+  const sx = 34, sy = 76;
+  for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2, L = 28 + ((FR + i * 7) % 9 < 4 ? 4 : 1); line(sx + Math.cos(a) * 24, sy + Math.sin(a) * 24, sx + Math.cos(a) * L, sy + Math.sin(a) * L, P[9]); }
+  circle(sx, sy, 24, P[9]); circle(sx, sy, 20, P[10]); dither(sx - 12, sy - 14, 10, 8, P[7], .5);
+  const ex = 238, ey = 82, er = 34;
+  earth(ex, ey, er, t); sprite(SPR.person, ex - 2, ey - er - 8);
+  T('太阳', 68, 210, P[10], 'center');
+  // 中微子流：从太阳出发，直线穿过地球
+  for (let i = 0; i < 120; i++) {
+    const sp = 70 + hash(i) * 50, off = hash(i + 99) * 400;
+    const x = sx + 20 + ((t * sp + off) % 300); const y = sy + (hash(i + 7) - .5) * 1.6 * (x - sx);
+    if (y < 2 || y > 148) continue;
+    if ((FR + i) % 3 === 0) continue; // 闪烁 = “幽灵”
+    R(x, y, 3, 2, P[12]); R(x - 3, y, 3, 1, P[5]);
+  }
+  if (t > 9) {
+    const k = ease((t - 9) / 2.5);
+    box(176, 4, 140, 30, P[1], P[12]);
+    T('每秒 · 每平方厘米', 492, 14, P[6], 'center');
+    T(`≈ ${Math.round(650 * k)} 亿个中微子！`, 492, 36, P[10], 'center');
+  }
+}
+
+function sceneMessengers(t) {
+  R(0, 0, W, H, P[0]); stars(11, 60, 150);
+  for (let x = 0; x < W; x += 2) { px(x, 28 + Math.sin(x * .06 + t) * 4, P[2]); px(x, 102 + Math.sin(x * .05 - t) * 4, P[2]); }
+  const gx = 34, gy = 64;
+  for (let y = -6; y <= 6; y++) { const w = Math.round(18 * Math.sqrt(1 - (y / 7) ** 2)); dither(gx - w, gy + y, 2 * w, 1, P[13], .75); dither(gx - w / 2, gy + y, w, 1, P[14], .6); }
+  circle(gx, gy, 3, P[7]); if (FR % 6 < 4) { line(gx, gy - 6, gx, gy - 26, P[12]); line(gx, gy + 6, gx, gy + 26, P[12]); }
+  T('黑洞 / 活动星系核', 8, 186, P[13]);
+  for (let i = 0; i < 26; i++) circle(132 + hash(i) * 24, 42 + hash(i + 50) * 46, 3 + (hash(i + 9) * 5 | 0), hash(i + 3) > .5 ? P[4] : P[5]);
+  T('尘埃', 288, 194, P[4], 'center');
+  earth(292, 64, 12, t); T('地球', 584, 160, P[12], 'center');
+
+  // 光：被尘埃挡住
+  if (t > 4.5) { const k = clamp((t - 4.5) / 1.5); const x = lerp(46, 128, k); line(46, 63, x, 63, P[10], 4); if (k >= 1) sprite(SPR.cross, 124, 52); else R(x, 62, 3, 3, P[10]); }
+  // 宇宙射线：被磁场带偏
+  if (t > 6.8) {
+    const k = clamp((t - 6.8) / 2.5); let lx = 46, ly = 66;
+    for (let s = 0; s <= k; s += .01) { const x = 46 + s * 250, y = 66 + Math.sin(s * 9) * 18 * s + s * s * 34; if ((s * 100 | 0) % 2) px(x, y, P[8]); lx = x; ly = y; }
+    R(lx - 1, ly - 1, 3, 3, P[8]); if (k >= 1) sprite(SPR.cross, lx + 4, ly - 2);
+  }
+  // 中微子：直线抵达
+  if (t > 10.3) {
+    const k = clamp((t - 10.3) / 2); const x = lerp(46, 280, k);
+    line(46, 65, x, 65, P[12], 6); R(x, 64, 3, 3, P[7]);
+    if (k >= 1) { const r = ((t - 12.3) * 20) % 14; ring(292, 64, 12 + r, P[7]); sprite(SPR.check, 304, 44); }
+  }
+  const rows = [[4.5, P[10], '■ 光：被尘埃挡住'], [6.8, P[8], '■ 宇宙射线（带电）：被磁场带偏'], [10.3, P[12], '■ 中微子：笔直飞到地球！']];
+  rows.forEach(([t0, c, s], i) => { if (t > t0) T(typed(s, t - t0, 16), 24, 224 + i * 22, c); });
+}
+
+function sceneHard(t) {
+  R(0, 0, W, H, P[0]); stars(17, 50, 150);
+  if (t < 5) {
+    const cx = 160, cy = 82;
+    circle(cx, cy, 56, P[3]); circle(cx, cy, 53, P[4]); circle(cx, cy, 36, P[9]); circle(cx, cy, 18, P[10]);
+    for (let i = 0; i < 16; i++) { const y = 30 + i * 7, x = ((t * 110 + hash(i) * 400) % 380) - 30; if ((FR + i) % 3) { R(x, y, 4, 1, P[12]); px(x - 2, y, P[1]); } }
+    T('中微子能轻松穿过整个地球', 320, 8, P[7], 'center');
+  } else {
+    const k = ease((t - 5.2) / 2.5), s = Math.round(lerp(4, 62, k)), d = Math.round(s / 2);
+    const x0 = 120, y0 = 130;
+    R(0, y0, W, 2, P[6]);
+    for (let j = 0; j < d; j++) R(x0 + j, y0 - s - j - 1, s, 1, P[6]);           // 顶面
+    for (let j = 0; j < d; j++) R(x0 + s + j, y0 - s - j, 1, s, P[1]);           // 侧面
+    R(x0, y0 - s, s, s, P[12]); dither(x0, y0 - s, s, s, P[7], .12);             // 正面
+    sprite(SPR.person, x0 - 10, y0 - 8);
+    if (k > .95) { T('约 1 立方公里的“冰块”', 196, 30, P[7]); T('边长 1 公里 ≈ 3 座埃菲尔铁塔高', 196, 52, P[6]); }
+    T('探测器必须足够大！', 320, 8, P[10], 'center');
+  }
+}
+
+function sceneIce(t) {
+  R(0, 0, W, 40, P[1]); stars(23, 40, 38);
+  for (let x = 0; x < W; x++) { const y = 29 + Math.sin(x * .05 + t * .7) * 3; dither(x, y | 0, 1, 8, P[11], .35); dither(x, (y | 0) + 3, 1, 4, P[3], .5); }
+  R(0, 40, W, 6, P[7]); for (let i = 0; i < 40; i++) px(hash(i) * W, 41 + hash(i + 3) * 5, P[6]);
+  for (let y = 46; y < 152; y++) { R(0, y, W, 1, P[12]); dither(0, y, W, 1, P[1], (y - 46) / 90); }
+  // IceCube 实验室
+  R(142, 30, 36, 10, P[5]); R(140, 28, 40, 2, P[6]); R(146, 22, 8, 8, P[5]); R(166, 22, 8, 8, P[5]); R(145, 21, 10, 1, P[6]); R(165, 21, 10, 1, P[6]);
+  for (let i = 0; i < 5; i++) R(146 + i * 7, 33, 3, 2, P[10]);
+  // 深度标尺
+  R(300, 72, 1, 74, P[6]); R(297, 72, 6, 1, P[6]); R(297, 145, 6, 1, P[6]);
+  T('1450米', 590, 150, P[7], 'right'); T('2450米', 590, 274, P[7], 'right');
+  // 热水钻孔 + 放置传感器串
+  for (let i = 0; i < 10; i++) {
+    const x = 24 + i * 25, ts = 2 + i * .9; if (t < ts) continue;
+    const dep = 46 + clamp((t - ts) / 1.2) * 100;
+    line(x, 46, x, dep, P[5]);
+    for (let y = 72; y <= 144; y += 8) if (y <= dep) { R(x - 1, y - 1, 3, 3, P[6]); px(x, y - 1, P[7]); }
+    if (dep < 146) { R(x - 1, dep, 3, 2, (FR % 4 < 2) ? P[8] : P[9]); for (let k = 0; k < 4; k++) { const a = ((t * 2 + k * .25) % 1); px(x + Math.sin(k + t * 5) * 3, 39 - a * 14, a < .5 ? P[7] : P[6]); } }
+  }
+  R(0, 0, W, 25, P[1]); R(0, 25, W, 1, P[5]);
+  if (t < 10.5) {
+    T(typed('1988年 · 弗朗西斯·哈尔岑（Francis Halzen）', t - .3, 18), 8, 6, P[10]);
+    T(typed('设想：把南极冰盖变成一台巨型探测器！', t - 3, 14), 8, 28, P[7]);
+  } else {
+    T('IceCube 冰立方中微子天文台 · 南极点', 8, 6, P[10]);
+    T(typed('86 根电缆 · 5160 个光学传感器 · 2010 年建成', t - 10.7, 18), 8, 28, P[7]);
+  }
+}
+
+function sceneDetect(t) {
+  R(0, 0, W, H, P[1]);
+  for (let y = 0; y < 152; y += 2) dither(0, y, W, 1, P[0], .25);
+  const P0 = { x: 150, y: 92 }, dir = { x: .8, y: -.6 }, spd = 46, tHit = 3.2, LEN = 210;
+  const doms = [];
+  for (let i = 0; i < 15; i++) { const x = 20 + i * 20; line(x, 8, x, 146, P[5]); for (let y = 16; y <= 140; y += 10) doms.push([x, y]); }
+  // 中微子入射（从地下飞来）
+  const nIn = { x: 70, y: 152 };
+  if (t > .5) {
+    const k = clamp((t - .5) / (tHit - .5)); const x = lerp(nIn.x, P0.x, k), y = lerp(nIn.y, P0.y, k);
+    if (t < tHit + .6) { line(nIn.x, nIn.y, x, y, P[12], 6); if (FR % 3) R(x - 1, y - 1, 3, 3, P[7]); }
+  }
+  doms.forEach(([x, y]) => R(x - 1, y - 1, 2, 2, P[5]));
+  if (t > tHit) {
+    const L = Math.min(LEN, (t - tHit) * spd); const mx = P0.x + dir.x * L, my = P0.y + dir.y * L;
+    // 契伦科夫光锥：μ子身后的 V 形蓝光
+    for (let b = 2; b < 34; b += 3) { if (b > L) break; const cx = mx - dir.x * b, cy = my - dir.y * b, s = b * .85;
+      if ((FR + b) % 4) { px(cx - dir.y * s, cy + dir.x * s, P[12]); px(cx + dir.y * s, cy - dir.x * s, P[12]); } }
+    // 被照亮的传感器：颜色=到达时间（红→蓝），大小=光的强弱
+    const ramp = [P[8], P[9], P[10], P[11], P[12], P[13]];
+    doms.forEach(([x, y]) => {
+      const u = clamp(((x - P0.x) * dir.x + (y - P0.y) * dir.y) / LEN); const qx = P0.x + dir.x * u * LEN, qy = P0.y + dir.y * u * LEN;
+      const dist = Math.hypot(x - qx, y - qy); if (dist > 34 || u <= 0) return;
+      const th = tHit + u * LEN / spd + dist / 60; if (t < th) return;
+      const c = ramp[Math.min(5, Math.floor(u * 6))], sz = dist < 12 ? 4 : dist < 22 ? 3 : 2;
+      R(x - (sz >> 1), y - (sz >> 1), sz, sz, c); if (t - th < .15) ring(x, y, 5, P[7]);
+    });
+    line(P0.x, P0.y, mx, my, P[7]); R(mx - 1, my - 1, 3, 3, P[7]);
+    if (t - tHit < .5) { const r = (t - tHit) * 24 | 0; circle(P0.x, P0.y, Math.max(1, 6 - r / 3 | 0), P[10]); ring(P0.x, P0.y, r, P[7]); }
+  }
+  if (t > .8 && t < tHit + 1) T('中微子 ν（看不见）', 2 * 92, 2 * 128, P[12]);
+  if (t > tHit + .2) T('撞击！→ μ子', 2 * 156, 2 * 94, P[10]);
+  if (t > 5.2) T('契伦科夫蓝光', 2 * 214, 2 * 58, P[12]);
+  if (t > 9.4) { R(0, 0, W, 14, P[0]); T('光到达的时间 + 亮度 → 还原方向与能量', 320, 6, P[7], 'center'); }
+}
+
+function sceneFinds(t) {
+  R(0, 0, W, H, P[0]); stars(31, 70, 150);
+  const cards = [
+    [0.3, 10, 8, '2013', '首次确认：来自太阳系外', '的高能中微子（PeV级）', 'pair'],
+    [5.2, 164, 8, '2018', '追踪到一个耀变体', 'TXS 0506+056·约40亿光年', 'blazar'],
+    [9.7, 10, 74, '2022', '活动星系 NGC 1068', '也在发射中微子', 'spiral'],
+    [14.2, 164, 74, '2023', '首张银河系的', '「中微子照片」', 'galaxy'],
+  ];
+  cards.forEach(([t0, x, y, yr, l1, l2, icon]) => {
+    if (t < t0) return; const k = ease((t - t0) / .35), w = 146, h = 58;
+    const cw = Math.max(4, Math.round(w * k)), ch = Math.max(4, Math.round(h * k));
+    box(x + ((w - cw) >> 1), y + ((h - ch) >> 1), cw, ch, P[1], P[12]); if (k < 1) return;
+    B(yr, x + 6, y + 4, P[10]);
+    const ix = x + 120, iy = y + 14;
+    if (icon === 'pair') { const f = FR % 20 < 10; circle(ix - 6, iy, f ? 4 : 3, P[9]); circle(ix + 6, iy, f ? 3 : 4, P[10]); px(ix - 6, iy, P[7]); px(ix + 6, iy, P[7]); }
+    if (icon === 'blazar') { for (let j = -3; j <= 3; j++) dither(ix - 9 + Math.abs(j), iy + j, 18 - 2 * Math.abs(j), 1, P[13], .8); px(ix, iy, P[7]); if (FR % 6 < 4) line(ix, iy - 11, ix, iy + 11, P[12]); }
+    if (icon === 'spiral') { for (let a = 0; a < 14; a += .15) { const r = a * .8; px(ix + Math.cos(a + t) * r, iy + Math.sin(a + t) * r * .6, P[13]); px(ix - Math.cos(a + t) * r, iy - Math.sin(a + t) * r * .6, P[6]); } circle(ix, iy, 2, P[7]); }
+    if (icon === 'galaxy') { for (let i = -14; i <= 14; i++) { dither(ix + i, iy - i * .4 - 3, 1, 6, P[13], .7); if (hash(i + 77) > .5) px(ix + i, iy - i * .4 + (hash(i) * 6 - 3), P[12]); } }
+    T(l1, 2 * (x + 6), 2 * (y + 26), P[7]); T(l2, 2 * (x + 6), 2 * (y + 26) + 20, P[6]);
+  });
+}
+
+function sceneEnd(t) {
+  R(0, 0, W, H, P[0]); for (let y = 0; y < 120; y++) dither(0, y, W, 1, P[1], y / 120);
+  stars(41, 80, 110);
+  for (let x = 0; x < W; x++) { const y = (34 + Math.sin(x * .04 + t * .8) * 10 + Math.sin(x * .013 - t * .5) * 8) | 0;
+    dither(x, y, 1, 6, P[11], .55); dither(x, y + 6, 1, 10, P[3], .45); dither(x, y + 16, 1, 8, P[3], .2); }
+  for (let i = 0; i < 6; i++) { const k = ((t * .7 + hash(i) * 3) % 1.6); if (k > 1) continue; const x = hash(i + 11) * W, y = lerp(-10, 150, k); if (FR % 3) line(x, y, x - 6, y + 10, P[12]); }
+  R(0, 120, W, 32, P[7]); dither(0, 120, W, 32, P[6], .25);
+  R(140, 104, 40, 16, P[5]); R(138, 102, 44, 2, P[6]); R(144, 96, 8, 8, P[5]); R(168, 96, 8, 8, P[5]);
+  for (let i = 0; i < 5; i++) R(145 + i * 7, 109, 3, 3, FR % 50 < 46 ? P[10] : P[9]);
+  if (t > 4) T('2026 诺贝尔物理学奖 · 弗朗西斯·哈尔岑', 320, 10, P[10], 'center');
+  B(typed('中微子天文学', t - 1, 8), 160, 62, P[7], 'center');
+  if (t > 2.4) T('一扇观察宇宙的新窗户', 320, 166, P[12], 'center');
+  if (t > 6) T('资料：NobelPrize.org · IceCube 合作组', 320, 250, P[5], 'center');
+}
+
+film({
+  duration: 106,
+  scenes: [
+  [0, 7, sceneTitle], [7, 14, sceneSun], [21, 15, sceneMessengers], [36, 10, sceneHard],
+  [46, 17, sceneIce], [63, 14, sceneDetect], [77, 18, sceneFinds], [95, 11, sceneEnd],
+  ],
+  subs: [
+  [7, 11.5, '中微子，被称作「幽灵粒子」。'],
+  [11.5, 16, '太阳每时每刻都在向外喷射海量的中微子。'],
+  [16, 21, '每秒约有六百多亿个穿过你的指甲盖——你却毫无感觉。'],
+  [21, 26, '宇宙中最猛烈的天体，比如黑洞和活动星系核，会发射高能粒子。'],
+  [26, 31, '可光会被尘埃遮挡，带电的宇宙射线会被磁场带偏方向。'],
+  [31, 36, '只有中微子几乎不受干扰，笔直地从源头飞到地球。'],
+  [36, 41, '但这也意味着它极难被捕捉：它能轻松穿过整个地球。'],
+  [41, 46, '要抓住极少数“撞上”的中微子，探测器必须大得惊人。'],
+  [46, 51, '1988年起，弗朗西斯·哈尔岑提出一个大胆的设想：'],
+  [51, 56, '南极冰层又厚又透明，干脆把整片冰盖变成探测器！'],
+  [56, 63, '人们用热水钻出深孔，把5160个光学传感器放进1450到2450米深的冰里。'],
+  [63, 67.5, '极少数时候，中微子撞上冰里的原子核，产生一个高速的μ子。'],
+  [67.5, 72, 'μ子比光在冰中跑得还快，拖出一道淡蓝色的契伦科夫光。'],
+  [72, 77, '传感器记录光到达的时间和强弱，就能还原中微子的来向和能量。'],
+  [77, 82, '2013年，冰立方首次证实：确有来自太阳系外的高能中微子。'],
+  [82, 86.5, '2018年，它追踪到一个约40亿光年外的耀变体。'],
+  [86.5, 91, '2022年，又发现活动星系NGC 1068也在发射中微子。'],
+  [91, 95, '2023年，人类第一次用中微子“拍”下了银河系。'],
+  [95, 100, '从此，我们多了一种看宇宙的方式——中微子天文学。'],
+  [100, 105.5, '这就是2026年诺贝尔物理学奖。感谢观看！'],
+  ],
+});
+</script>
+</body>
+</html>
