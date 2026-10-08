@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>月球撞击闪光</title>
+</head>
+<body>
+<script src="../engine/pixel8.js"></script>
+<script>
+// ===== 8-bit 科普短片：宇航员亲眼看见月球被陨石击中！（Artemis II 撞击闪光） =====
+
+// 月球圆盘：shift = 阴影圆向左的偏移（0 全暗，2r 全亮），亮面在右侧
+function moon(cx, cy, r, shift = 2 * r, seed = 1) {
+  const cr = [];
+  for (let i = 0; i < 14; i++) { const a = hash(seed * 50 + i) * Math.PI * 2, d = Math.sqrt(hash(seed * 50 + i + 20)) * r * .8;
+    cr.push([cx + Math.cos(a) * d, cy + Math.sin(a) * d, 1.5 + hash(seed * 50 + i + 40) * r * .18]); }
+  for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) {
+    if (x * x + y * y > r * r) continue;
+    const X = cx + x, Y = cy + y, lit = (x + shift) ** 2 + y * y > r * r;
+    const inC = cr.some(([a, b, q]) => (X - a) ** 2 + (Y - b) ** 2 < q * q);
+    let c = lit ? (inC ? P[13] : P[6]) : (inC ? P[0] : P[1]);
+    if (x * x + y * y > (r - 1.5) ** 2) c = P[5];
+    px(X, Y, c);
+  }
+}
+// 撞击闪光：极短的白色针尖 + 十字光芒（动画里放慢到约 0.1 秒）
+function flash(x, y, age) {
+  if (age < 0) return;
+  if (age < .1) { R(x - 1, y - 1, 3, 3, P[7]); line(x - 5, y, x + 5, y, P[12]); line(x, y - 5, x, y + 5, P[12]); if (age < .04) ring(x, y, 7, P[7]); }
+  else if (age < .5) px(x, y, P[10]);
+}
+SPR.orion = ['.6.', '666', '777', 'c.c'];
+
+function sceneHook(t) {
+  R(0, 0, W, H, P[0]); stars(3, 90);
+  moon(160, 96, 46, 58, 2);
+  flash(132, 100, t - 5.5);
+  B(typed('宇航员亲眼看见', t - 1, 10), 160, 8, P[7], 'center');
+  B(typed('月球被陨石击中！', t - 2, 10), 160, 28, P[10], 'center');
+}
+
+const FLASHES = [[3.0, -12, 8], [5.5, 6, 14], [7.8, -4, -10], [10.0, 14, -2], [12.2, -14, 22]];
+function scenePorthole(t) {
+  // 猎户座飞船舱壁
+  R(0, 0, W, H, P[5]);
+  for (let x = 0; x < W; x += 40) R(x, 0, 1, H, P[0]);
+  for (let y = 0; y < H; y += 36) R(0, y, W, 1, P[6]);
+  for (let x = 4; x < W; x += 40) for (let y = 4; y < H; y += 36) px(x, y, P[13]);
+  const cx = 150, cy = 76;
+  circle(cx, cy, 60, P[0]); circle(cx, cy, 58, P[6]); circle(cx, cy, 55, P[13]); circle(cx, cy, 52, P[0]);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; R(cx + Math.cos(a) * 56.5 - 1, cy + Math.sin(a) * 56.5 - 1, 2, 2, P[5]); }
+  for (let i = 0; i < 60; i++) { const x = cx - 50 + hash(i * 3 + 7) * 100, y = cy - 50 + hash(i * 5 + 9) * 100, d = (x - cx) ** 2 + (y - cy) ** 2;
+    if (d < 50 * 50 && d > 42 * 42) px(x, y, (FR + i) % 30 < 3 ? P[5] : P[6]); }
+  // 日冕：月球恰好挡住太阳
+  for (let a = 0; a < 360; a += 2) { const rad = a * Math.PI / 180, L = 37 + (hash(a) * 6 | 0) + ((FR + a) % 20 < 3 ? 1 : 0);
+    for (let d = 35; d < L; d++) { const x = Math.round(cx + Math.cos(rad) * d), y = Math.round(cy + Math.sin(rad) * d); if (bay(x, y) < 1 - (d - 35) / (L - 34)) px(x, y, d < 37 ? P[7] : P[10]); } }
+  moon(cx, cy, 34, 0, 5);
+  let n = 0;
+  FLASHES.forEach(([ft, dx, dy], i) => {
+    if (t < ft) return; n++; const age = t - ft;
+    if (age < .5) flash(cx + dx, cy + dy, age); else { ring(cx + dx, cy + dy, 3, P[8]); T(String(i + 1), 2 * (cx + dx) + 8, 2 * (cy + dy) - 14, P[8]); }
+  });
+  // 宇航员头盔背影（前景），金色面罩侧向舷窗
+  const hx = 282, hy = 146;
+  circle(hx, hy, 31, P[5]); circle(hx, hy, 30, P[7]);
+  for (let y = -30; y <= 30; y++) { const w = Math.floor(Math.sqrt(900 - y * y)); dither(hx + w - 9, hy + y, 9, 1, P[6], .55);
+    if (y > -20 && y < 12) R(hx - w + 1, hy + y, 6 - Math.floor(Math.abs(y + 4) / 5), 1, P[9]); }
+  R(hx - 27, hy - 12, 1, 8, P[10]); R(hx - 6, hy - 30, 12, 2, P[8]); R(hx - 31, hy + 4, 3, 3, P[5]);
+  T('2026.04.06 · Artemis II 猎户座飞船', 632, 10, P[7], 'right');
+  if (t > 8.5) T('距月球约 7.4 万公里', 632, 32, P[12], 'right');
+  if (t > 9.5) T('每次闪光约 1 毫秒', 632, 54, P[10], 'right');
+  if (n) { T('闪光', 16, 8, P[7]); B('×' + n, 8, 14, P[10]); }
+}
+
+function sceneData(t) {
+  R(0, 0, W, H, P[0]);
+  for (let y = 0; y < 150; y += 8) R(0, y, W, 1, P[1]);
+  for (let x = 0; x < W; x += 8) R(x, 0, 1, 150, P[1]);
+  T('2026.10.07 · NASA 公开 Artemis II 月球科学数据', 320, 10, P[10], 'center');
+  const tiles = [[.3, 12, '800GB+', '月球科学数据', 'disk'], [1.1, 114, '11000+', '张图片和视频', 'photo'], [1.9, 216, '8.5小时', '科学观察录音', 'mic']];
+  tiles.forEach(([t0, x, num, label, icon]) => {
+    if (t < t0) return; const k = ease((t - t0) / .3), w = 92, h = 54;
+    const cw = Math.max(4, Math.round(w * k)), ch = Math.max(4, Math.round(h * k));
+    box(x + ((w - cw) >> 1), 28 + ((h - ch) >> 1), cw, ch, P[1], P[12]); if (k < 1) return;
+    if (icon === 'disk') { R(x + 37, 34, 18, 12, P[6]); R(x + 39, 36, 14, 2, P[5]); R(x + 39, 40, 14, 1, P[5]); px(x + 52, 43, (FR % 10 < 5) ? P[11] : P[3]); }
+    if (icon === 'photo') { R(x + 37, 33, 18, 14, P[7]); R(x + 38, 34, 16, 12, P[0]); circle(x + 49, 38, 2, P[6]); R(x + 39, 43, 14, 2, P[5]); }
+    if (icon === 'mic') { R(x + 43, 33, 6, 9, P[6]); R(x + 44, 34, 4, 1, P[5]); R(x + 44, 36, 4, 1, P[5]); R(x + 41, 40, 1, 3, P[6]); R(x + 50, 40, 1, 3, P[6]); R(x + 42, 43, 8, 1, P[6]); R(x + 46, 44, 1, 3, P[6]); R(x + 42, 47, 9, 1, P[6]); }
+    B(num, x + 46, 50, P[10], 'center'); T(label, 2 * (x + 46), 140, P[7], 'center');
+  });
+  const rows = [[4.3, SPR.cross, '宇宙射线？', '排除', P[8]], [5.2, SPR.cross, '飞船反光？', '排除', P[8]], [6.3, SPR.check, '结论：陨石撞击月面产生的闪光', '', P[11]]];
+  rows.forEach(([t0, spr, a, b, c], i) => { if (t < t0) return; const y = 186 + i * 24; sprite(spr, 22, y / 2 + 1); T(a, 64, y, i === 2 ? P[11] : P[7]); if (b) T(b, 300, y, c); });
+}
+
+function sceneNames(t) {
+  // 左：地球（有大气）
+  for (let y = 0; y < 130; y++) { R(0, y, 158, 1, P[0]); dither(0, y, 158, 1, P[1], clamp((y - 10) / 40)); dither(0, y, 158, 1, P[12], clamp((y - 70) / 80) * .8); }
+  for (let i = 0; i < 24; i++) px(hash(i * 3 + 1) * 158, hash(i * 7 + 2) * 36, P[6]);
+  for (let x = 0; x < 158; x += 3) px(x, 44, P[13]);
+  T('大气层', 8, 94, P[13]);
+  R(0, 130, 158, 20, P[3]); R(0, 130, 158, 2, P[11]);
+  const k = clamp((t - .3) / 5.7), rx = lerp(30, 120, k), ry = lerp(-4, 128, k), dx = 90 / 132, dy = 1;
+  if (k < 1) {
+    const burning = ry > 44, s = burning ? Math.max(1, 3 - Math.floor((ry - 44) / 30)) : 3;
+    if (burning) { for (let j = 1; j < 16; j++) { const c = j < 4 ? P[10] : j < 9 ? P[9] : P[8]; if ((FR + j) % 5) px(rx - j * dx * 1.2, ry - j * dy * 1.2, c); } }
+    R(rx - 1, ry - 1, s, s, burning ? P[7] : P[4]);
+    if (!burning) T('流星体', 2 * rx + 10, 2 * ry, P[6]); else T('流星', 2 * rx + 12, 2 * ry - 8, P[10]);
+  } else { R(119, 127, 2, 2, P[4]); if (FR % 20 < 10) px(121, 126, P[7]); T('陨石', 230, 226, P[9]); }
+  R(158, 0, 4, 150, P[5]);
+  // 右：月球（几乎没有大气）
+  R(162, 0, 158, 150, P[0]); for (let i = 0; i < 24; i++) px(162 + hash(i * 5 + 3) * 158, hash(i * 11 + 4) * 120, P[6]);
+  R(162, 128, 158, 22, P[6]); dither(162, 129, 158, 21, P[5], .35); R(162, 128, 158, 1, P[7]);
+  const tHit = 10, ix = 250;
+  if (t > 8.5 && t < tHit) { const k2 = clamp((t - 8.5) / (tHit - 8.5)), x = lerp(190, ix, k2), y = lerp(-4, 128, k2);
+    for (let j = 2; j < 10; j += 2) px(x - j * .45, y - j, P[5]); R(x - 1, y - 1, 3, 3, P[4]); T('流星体', 2 * x + 10, 2 * y, P[6]); }
+  if (t >= tHit) {
+    const a = t - tHit, cw = Math.round(8 * ease(a / .6));
+    for (let x = -cw; x <= cw; x++) R(ix + x, 128, 1, Math.round(4 * (1 - (x / Math.max(1, cw)) ** 2)) + 1, P[1]);
+    if (cw > 2) { R(ix - cw - 2, 127, 3, 1, P[7]); R(ix + cw, 127, 3, 1, P[7]); }
+    if (a < .5) flash(ix, 125, a);
+    for (let i = 0; i < 14; i++) { const x = ix + (hash(i) - .5) * 60 * a, y = 128 - (10 + hash(i + 9) * 30) * a + 12 * a * a; if (y < 128 && a < 3) px(x, y, P[6]); }
+    if (a > .3) T('直接撞击！', 2 * ix, 2 * 104, P[10], 'center');
+  }
+  T('地球：有大气层', 158, 8, P[12], 'center'); T('月球：几乎没有大气', 482, 8, P[6], 'center');
+}
+
+function sceneImpact(t) {
+  R(0, 0, W, H, P[0]); stars(13, 60, 90);
+  for (let x = 0; x < W; x++) { const h = Math.round(96 + Math.sin(x * .03) * 4 + Math.sin(x * .11) * 2); R(x, h, 1, 110 - h, P[5]); }
+  R(0, 110, W, 40, P[6]); dither(0, 111, W, 39, P[5], .3); R(0, 110, W, 1, P[7]);
+  const ix = 190, iy = 110, tHit = 3, dx = 180 / 118;
+  if (t < tHit) {
+    const k = clamp((t - .6) / (tHit - .6)), x = lerp(10, ix, k), y = lerp(-8, iy, k);
+    if (t > .6) { for (let j = 1; j <= 5; j++) line(x - j * 9 * dx / 1.8, y - j * 9 / 1.8 - 2, x - j * 9 * dx / 1.8 - 6, y - j * 9 / 1.8 - 6, j < 3 ? P[6] : P[5]); circle(x, y, 2, P[4]); px(x, y - 1, P[9]); }
+  } else {
+    const a = t - tHit;
+    if (a < 1.4) { const r = Math.round(4 + a * 30), cols = [P[7], P[10], P[9], P[8], P[2]], c = cols[Math.min(4, Math.floor(a / 1.4 * 5))];
+      for (let y = -r; y <= 0; y++) { const w = Math.round(Math.sqrt(r * r - y * y)); dither(ix - w, iy + y, 2 * w, 1, c, 1 - a / 1.4 * .7); } }
+    for (let i = 0; i < 40; i++) { const vx = (hash(i) - .5) * 90, vy = -(20 + hash(i + 40) * 70), x = ix + vx * a, y = iy + vy * a + 15 * a * a;
+      if (y <= iy && a < 5) px(x, y, i % 3 ? P[6] : P[9]); }
+    const ck = ease((a - .2) / 1), cw = Math.round(20 * ck), cd = Math.round(7 * ck);
+    for (let x = -cw; x <= cw; x++) R(ix + x, iy, 1, Math.round(cd * (1 - (x / Math.max(1, cw)) ** 2)) + 1, P[1]);
+    if (cw > 2) { R(ix - cw - 3, iy - 2, 4, 2, P[7]); R(ix + cw, iy - 2, 4, 2, P[7]); }
+    if (a < .07) dither(0, 0, W, 150, P[7], .85);
+  }
+  if (t > .6 && t < tHit + 1.3) { T('速度：每秒 20–70 公里', 16, 12, P[10]); T('（步枪子弹约每秒 1 公里）', 16, 34, P[6]); }
+  if (t > tHit + 1.4) T('动能 → 热 → 岩石汽化 → 闪光', 320, 12, P[10], 'center');
+  if (t > 9.2) { box(10, 116, 116, 30, P[1], P[5]); T('撞击物：大多只有几厘米', 32, 240, P[7]); T('撞击坑：最大也就几米宽', 32, 264, P[7]); }
+}
+
+function sceneWhy(t) {
+  R(0, 0, W, H, P[0]); stars(19, 50, 150);
+  T('为什么在地球上很难看到？', 320, 8, P[10], 'center');
+  const panels = [[.5, 8, '① 太短'], [3.5, 112, '② 太暗'], [7.2, 216, '③ 太远']];
+  panels.forEach(([t0, x, title], i) => {
+    if (t < t0) return; const k = ease((t - t0) / .3), w = 96, h = 120;
+    const cw = Math.max(4, Math.round(w * k)), ch = Math.max(4, Math.round(h * k));
+    box(x + ((w - cw) >> 1), 26 + ((h - ch) >> 1), cw, ch, P[1], P[12]); if (k < 1) return;
+    const cx = x + 48, tx = 2 * cx;
+    T(title, tx, 60, P[10], 'center');
+    if (i === 0) { circle(cx, 76, 16, P[6]); circle(cx, 76, 14, P[0]); R(cx - 2, 57, 5, 3, P[6]);
+      for (let j = 0; j < 12; j++) { const a = j / 12 * Math.PI * 2; px(cx + Math.sin(a) * 12, 76 - Math.cos(a) * 12, P[5]); }
+      const a = t * 12; line(cx, 76, cx + Math.sin(a) * 11, 76 - Math.cos(a) * 11, P[8]);
+      T('不到 0.1 秒', tx, 206, P[7], 'center'); T('（约 1 毫秒）', tx, 228, P[6], 'center'); }
+    if (i === 1) { moon(cx, 78, 20, 14, 9); flash(cx - 14, 80, ((t - t0) * 1.3) % 1); flash(cx - 8, 70, ((t - t0) * 1.3 + .5) % 1);
+      T('只能在暗面看到', tx, 206, P[7], 'center'); T('亮面会淹没它', tx, 228, P[6], 'center'); }
+    if (i === 2) { earth(x + 10, 76, 6, t); moon(x + 86, 76, 4, 8, 4);
+      line(x + 18, 86, x + 82, 86, P[12], 4); T('38万公里', tx, 180, P[12], 'center');
+      sprite(SPR.orion, x + 70, 64); line(x + 73, 70, x + 82, 70, P[10]); T('7.4万', 2 * (x + 76), 108, P[10], 'center');
+      T('比飞船远 5 倍多', tx, 206, P[7], 'center'); T('→ 暗约 27 倍', tx, 228, P[8], 'center'); }
+  });
+}
+
+const MARKS = [[-10, 10], [8, 16], [-2, -6], [16, 4], [0, 30]];
+function sceneStats(t) {
+  R(0, 0, W, H, P[0]); stars(23, 50, 150);
+  T('科学家为什么要统计这些闪光？', 320, 6, P[10], 'center');
+  moon(78, 78, 44, 88, 5);
+  MARKS.forEach(([dx, dy], i) => { if (t < .5 + i * .5) return; ring(78 + dx, 78 + dy, 4, P[8]); T(String(i + 1), 2 * (78 + dx) + 10, 2 * (78 + dy) - 16, P[8]); });
+  if (t > 3) { T('时间 · 位置 · 亮度', 156, 252, P[7], 'center'); T('→ 多久被撞一次、撞得多猛', 156, 274, P[6], 'center'); }
+  // 右：未来的月球基地
+  R(170, 120, 150, 30, P[6]); dither(170, 121, 150, 29, P[5], .3); R(170, 120, 150, 1, P[7]);
+  const bx = 240, by = 120;
+  for (let y = -28; y <= 0; y++) { const w = Math.round(Math.sqrt(28 * 28 - y * y)); R(bx - w, by + y, 2 * w, 1, P[7]); }
+  for (let j = -2; j <= 2; j++) line(bx + j * 10, by, bx + j * 5, by - 27, P[6]);
+  R(bx - 4, by - 8, 8, 8, P[12]); sprite(SPR.person, 290, 112);
+  if (t > 5.5) {
+    const th = Math.min(3, 1 + Math.floor((t - 5.5) * 1.2));
+    for (let a = Math.PI; a <= 2 * Math.PI; a += .02) for (let d = 0; d < th; d++) px(bx + Math.cos(a) * (31 + d), by + Math.sin(a) * (31 + d), P[12]);
+    for (let i = 0; i < 6; i++) {
+      const cyc = (t - 5.5) * .9 + hash(i); const ph = cyc % 1, a = -Math.PI / 2 + (hash(i + Math.floor(cyc) * 7) - .5) * 1.6;
+      const tx = bx + Math.cos(a) * 33, ty = by + Math.sin(a) * 33, sx = tx + 60, sy = ty - 80;
+      if (ph < .7) { const k = ph / .7; R(lerp(sx, tx, k), lerp(sy, ty, k), 2, 2, P[4]); px(lerp(sx, tx, k) + 3, lerp(sy, ty, k) - 4, P[5]); }
+      else if (ph < .82) ring(tx, ty, 3, P[10]);
+    }
+    T('→ 设计防护：基地 · 航天服 · 月球车', 480, 128, P[12], 'center');
+  }
+}
+
+function sceneEnd(t) {
+  R(0, 0, W, H, P[0]); stars(29, 90, 150);
+  moon(160, 82, 50, 70, 3);
+  flash(128, 90, t - 3);
+  B(typed('月球并不安静', t - .5, 8), 160, 8, P[7], 'center');
+  if (t > 2) T('资料：NASA Artemis II 月球科学初步报告（2026.10.07）', 320, 280, P[5], 'center');
+}
+
+film({
+  duration: 88,
+  scenes: [
+    [0, 7, sceneHook], [7, 15, scenePorthole], [22, 9, sceneData], [31, 13, sceneNames],
+    [44, 14, sceneImpact], [58, 12, sceneWhy], [70, 11, sceneStats], [81, 7, sceneEnd],
+  ],
+  subs: [
+    [.3, 7, '如果你盯着月球看得足够久，有没有可能亲眼看到一颗陨石撞上去？'],
+    [7, 11.5, '2026年4月6日，Artemis II 的猎户座飞船正在飞越月球。'],
+    [11.5, 16, '月球恰好挡住了太阳，朝向宇航员的这一面一片漆黑。'],
+    [16, 22, '就在这时，他们用肉眼看到了5次针尖般的闪光！'],
+    [22, 26.5, '10月7日，NASA公开了这次任务的月球科学数据。'],
+    [26.5, 31, '科学团队排除了宇宙射线和飞船反光，确认这些就是撞击闪光。'],
+    [31, 35, '太空中飞行的小石块，叫作流星体。'],
+    [35, 39.5, '冲进地球大气会燃烧发光，就是流星；落到地面的残骸才叫陨石。'],
+    [39.5, 44, '可月球几乎没有大气，流星体会毫无阻拦地直接撞上月面。'],
+    [44, 48.5, '它们的速度高达每秒20到70公里，比步枪子弹快几十倍。'],
+    [48.5, 53, '撞击瞬间，巨大的动能变成热，岩石被汽化，迸发出一道闪光。'],
+    [53, 58, '这些撞击物大多只有几厘米大，砸出的坑最大也就几米宽。'],
+    [58, 61.5, '那为什么在地球上很难看到？'],
+    [61.5, 65.5, '闪光不到0.1秒，而且只能在月球没被照亮的暗面上看到。'],
+    [65.5, 70, '地球比飞船离月球远5倍多，闪光会暗约27倍，只能靠望远镜加摄像机。'],
+    [70, 75.5, '记下每次闪光的时间、位置和亮度，就能算出月球多久被撞一次、撞得多猛。'],
+    [75.5, 81, '未来的月球基地、航天服和月球车，都要靠这些数据来设计防护。'],
+    [81, 84.5, '月球看似一成不变，其实一直在经受太空岩石的撞击。'],
+    [84.5, 87.5, '下次看月亮时，也许正有一道闪光转瞬即逝。'],
+  ],
+});
+</script>
+</body>
+</html>
