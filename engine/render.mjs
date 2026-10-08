@@ -1,15 +1,16 @@
-// 逐帧渲染 index.html 并用 ffmpeg 合成 MP4。
-// 用法: node render.mjs [输出.mp4] [--from 秒] [--to 秒] [--png 秒,秒,...]
+// 逐帧渲染某个短片目录下的 index.html，并用 ffmpeg 与该目录的 music.wav 合成 MP4。
+// 用法: node engine/render.mjs <短片目录> [输出.mp4] [--from 秒] [--to 秒] [--png 秒,秒,...]
 import { spawn, execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const dir = path.dirname(fileURLToPath(import.meta.url));
-const args = process.argv.slice(2);
+const [project, ...args] = process.argv.slice(2);
+if (!project) { console.error('用法: node engine/render.mjs <短片目录> [输出.mp4] [--png 秒,秒,...]'); process.exit(1); }
+const dir = path.resolve(project);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
-const outFile = args[0] && !args[0].startsWith('--') ? args[0] : path.join(dir, 'out', 'nobel-2026-icecube.mp4');
+const outFile = args[0] && !args[0].startsWith('--') ? args[0] : path.join(dir, 'out', `${path.basename(dir)}.mp4`);
 const FPS = 30;
 // 优先用本地安装的 playwright，否则回退到全局安装
 let pw;

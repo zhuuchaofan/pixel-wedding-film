@@ -21,9 +21,9 @@
 ## 制作
 
 ```bash
-python3 music.py music.wav   # 生成 8-bit 背景音乐（需要 numpy）
-node render.mjs              # 逐帧渲染 index.html → out/nobel-2026-icecube.mp4（需要 playwright + ffmpeg）
-node render.mjs out/s --png 15,60   # 只导出若干秒的截图用于检查
+cd nobel-2026-icecube && python3 music.py && cd ..   # 生成 8-bit 背景音乐（需要 numpy）
+node engine/render.mjs nobel-2026-icecube             # 逐帧渲染 → out/nobel-2026-icecube.mp4（需要 playwright + ffmpeg）
+node engine/render.mjs nobel-2026-icecube out/s --png 15,60   # 只导出若干秒的截图用于检查
 ```
 
 直接用浏览器打开 `index.html` 可以预览、拖动进度条。
